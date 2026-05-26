@@ -18,7 +18,9 @@ RUN git clone --depth 1 --branch ${NSJAIL_VERSION} https://github.com/google/nsj
 # ---- Builder / dev image (Go + linters + nsjail) ----
 FROM golang:${GO_VERSION}-${DEBIAN_VERSION} AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libnl-route-3-200 libprotobuf32 \
+        libnl-route-3-200 \
+	libprotobuf32 \
+	python3 \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=nsjail-builder /usr/local/bin/nsjail /usr/local/bin/nsjail
 RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
@@ -30,10 +32,16 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/goboxd ./cmd/gobox
 
 # ---- Runtime image ----
 FROM debian:${DEBIAN_VERSION}-slim AS runtime
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates libnl-route-3-200 libprotobuf32 \
+        ca-certificates \
+        libnl-route-3-200 \
+        libprotobuf32 \
+        python3 \
     && rm -rf /var/lib/apt/lists/*
+
 COPY --from=nsjail-builder /usr/local/bin/nsjail /usr/local/bin/nsjail
 COPY --from=builder        /out/goboxd          /usr/local/bin/goboxd
+
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/goboxd"]
