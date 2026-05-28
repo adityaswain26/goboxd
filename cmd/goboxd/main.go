@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 )
 
 func healthz(w http.ResponseWriter, r *http.Request) {
@@ -35,10 +38,10 @@ type RunRequest struct {
 type RunResponse struct {
 	Status string `json:"status"`
 	Stdout string `json:"stdout"`
+	Stderr string `json:"stderr"`
 }
 func runHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type","application/json")
-	
 	var req RunRequest
 
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -54,19 +57,56 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer os.RemoveAll(tempDir)
 	fmt.Println("Temp directory:", tempDir)
-	sourcePath := filepath.Join(tempDir, "main.py")
+	var sourcePath string
+
+	if req.Language == "py3" {
+		sourcePath = filepath.Join(tempDir, "main.py")
+	} else if  req.Language == "cpp" {
+		sourcePath = filepath.Join(tempDir, "main.cpp")
+	} else {
+		http.Error(w, "unsupported language", http.StatusBadRequest)
+		return
+	}
 	err = os.WriteFile(sourcePath, []byte(req.Source), 0644)
 	if err != nil {
 		http.Error(w, "failed to write source file", http.StatusInternalServerError)
 		return
 	}
 	fmt.Println("Source file written:", sourcePath)
-	cmd := exec.Command("python3", sourcePath)
 
-	output, err := cmd.CombinedOutput()
-	
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	var cmd *exec.Cmd
+
+	if req.Language == "py3" {
+		cmd = exec.CommandContext(ctx, "python3", sourcePath)
+	} else if req.Language == "cpp" {
+		binaryPath := filepath.Join(tempDir,"main")
+		compileCmd := exec.Command("g++", sourcePath, "-o", binaryPath)
+		compileOutput, compileErr := compileCmd.CombinedOutput()
+		if compileErr != nil {
+			response := RunResponse{
+				Status: "compile error",
+				Stdout: "",
+				Stderr: string(compileOutput),
+			}
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+		cmd = exec.CommandContext(ctx, binaryPath)
+	}
+	var stdoutBuf bytes.Buffer
+	var stderrBuf bytes.Buffer
+
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
+
+	err = cmd.Run()
+
 	fmt.Println("Execution output:")
-	fmt.Println(string(output))
+	fmt.Println(stdoutBuf.String())
 
 	if err != nil {
 		fmt.Println("Execution error:", err)
@@ -76,13 +116,18 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 
 	status := "wrong answer"
 
-	if string(output) == req.ExpectedOutput {
+	if ctx.Err() == context.DeadlineExceeded {
+		status = "time limit exceeded"
+	}else if err != nil {
+		status = "runtime error"
+	}else if stdoutBuf.String() == req.ExpectedOutput {
 		status = "accepted"
 	}
 
 	response := RunResponse{
 		Status: status,
-		Stdout: string(output),
+		Stdout: stdoutBuf.String(),
+		Stderr: stderrBuf.String(),
 	}
 
 	w.WriteHeader(http.StatusOK)
