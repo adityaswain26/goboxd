@@ -77,3 +77,112 @@ Restored separate runtime stage.
 Learned how multi-stage Docker builds reference artifacts between stages using stage aliases.
 
 ---
+
+## 2026-05-27 : Infinite loops incorrectly marked as accepted
+
+### Problem
+Programs like:
+`Python
+while True:
+	pass`
+were being terminated internally but still returned:
+`JSON
+{
+  "status":"accepted"
+}`
+
+## Cause
+Execution status logic checked output matching before checking timeout state. Since the infinite loop produced no stdout and expected output was an empty string, the request was incorrectly classified as accepted.
+
+## Investigation 
+Tested the backend using intentionally infinite Python programs and inspected execution logs:
+`signal:killed`
+This confirmed timeout termination was working internally.
+
+## Resolution
+Added timeout-state detection using:
+`Go
+ctx.Err() == context.DeadlineExceeded`
+befor output comparison logic.
+
+## Learning
+Learned that execution classification order matters and process termination state must be evaluted before result comparison.
+
+---
+
+# 2026-05-28 : stdout and stderr mixed together
+## Problem
+Runtime errors like:
+`Python
+print(x)`
+were being returned as 
+`wrong answer`
+because runtime errors and normal program output were merged together.
+
+## Cause
+The backend intially used:
+`Go
+CombinedOutput()`
+which merged stdout and stderr into one stream.
+## Ivestigation 
+Observed that Python tracebacks appeared inside the stdout response field.
+## Resolution
+Replaced combined output handling with separate buffers:
+`Go
+cmd.Stdout = &stdoutBuf
+cmd.Sterr = &stderrBuf`
+## Learning 
+Learned that process execution produces multiple output streams and proper execution classification depends on separating them.
+
+---
+
+# 2026-05-28 : Go variable shadowing caused sourcePath bug
+## Problem
+Build failed with:
+` declared and not used: sourcePath`
+## Cause
+Inside:
+`Go
+if req.Language == "py3"`
+I accidentally used:
+`Go
+:=`
+instead of:
+`Go
+=`
+which created a new local variable instead of updating the outer sourcePath.
+## Investigation
+Inspected Language-selection block and compared variable scope behavior.
+## Resolution
+Replaced:
+`Go
+sourcePath :=`
+with:
+`Go
+sourcePath =`
+## Learning 
+Learned how Go variable shadowing works inside conditional blocks and how := creates new scoped variables.
+
+---
+
+# 2026-05-28 : Integrating compiled-language execution pipeline
+## Problems
+The backend initially assumed all languages could execute using:
+`Go
+python3 sourcePath`
+which failed conceptually for compiled languages like C++.
+## Cause
+Execution architecture was still interpreter-specific.
+## Invesigation 
+Mapped execution flow differeces between:
+- interpreted languages
+- compiled languages
+## Resolution
+Implemented separate execution pipeline for C++:
+`source -> compile -> binary -> execute`
+using:
+`Go
+g++`
+inside the runtime container.
+## Learning 
+Learned that execution systems require language-specific exection strategie rather than one universal execution path.

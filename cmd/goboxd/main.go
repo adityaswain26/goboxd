@@ -40,6 +40,41 @@ type RunResponse struct {
 	Stdout string `json:"stdout"`
 	Stderr string `json:"stderr"`
 }
+
+type LanguageConfig struct{
+	FileName string
+	Compiled bool
+}
+
+var languages = map[string]LanguageConfig{
+	"py3":{
+		FileName: "main.py",
+		Compiled: false,
+	},
+	"cpp":{
+		FileName: "main.cpp",
+		Compiled: true,
+	},
+}
+
+func buildCommand(ctx context.Context, lang LanguageConfig, sourcePath string, tempDir string) (*exec.Cmd, error) {
+
+	if !lang.Compiled {
+		return exec.CommandContext(ctx, "python3", sourcePath), nil
+	}
+
+	binaryPath := filepath.Join(tempDir, "main")
+
+	compileCmd := exec.Command("g++", sourcePath, "-o", binaryPath)
+
+	output, err := compileCmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("compile error: %s", string(output))
+	}
+
+	return exec.CommandContext(ctx, binaryPath), nil
+}
+
 func runHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type","application/json")
 	var req RunRequest
@@ -57,16 +92,12 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer os.RemoveAll(tempDir)
 	fmt.Println("Temp directory:", tempDir)
-	var sourcePath string
-
-	if req.Language == "py3" {
-		sourcePath = filepath.Join(tempDir, "main.py")
-	} else if  req.Language == "cpp" {
-		sourcePath = filepath.Join(tempDir, "main.cpp")
-	} else {
+	lang, ok := languages[req.Language]
+	if !ok {
 		http.Error(w, "unsupported language", http.StatusBadRequest)
 		return
 	}
+	sourcePath := filepath.Join(tempDir, lang.FileName)
 	err = os.WriteFile(sourcePath, []byte(req.Source), 0644)
 	if err != nil {
 		http.Error(w, "failed to write source file", http.StatusInternalServerError)
@@ -77,25 +108,16 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	var cmd *exec.Cmd
-
-	if req.Language == "py3" {
-		cmd = exec.CommandContext(ctx, "python3", sourcePath)
-	} else if req.Language == "cpp" {
-		binaryPath := filepath.Join(tempDir,"main")
-		compileCmd := exec.Command("g++", sourcePath, "-o", binaryPath)
-		compileOutput, compileErr := compileCmd.CombinedOutput()
-		if compileErr != nil {
-			response := RunResponse{
-				Status: "compile error",
-				Stdout: "",
-				Stderr: string(compileOutput),
-			}
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(response)
-			return
+	cmd, err := buildCommand(ctx, lang, sourcePath, tempDir)
+	if err != nil {
+		response := RunResponse{
+			Status: "compile error",
+			Stdout: "",
+			Stderr: err.Error(),
 		}
-		cmd = exec.CommandContext(ctx, binaryPath)
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+		return
 	}
 	var stdoutBuf bytes.Buffer
 	var stderrBuf bytes.Buffer

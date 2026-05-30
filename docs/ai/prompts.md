@@ -60,8 +60,8 @@ Implemented:
 - JSON response encoding
 
 Adjusted implementation incrementally during degging and integrated cleanup logic separately using:
-```go
-defer os.RemoveAll(tempDir)```
+`go
+defer os.RemoveAll(tempDir)`
 
 ---
 
@@ -78,9 +78,9 @@ Receiced explanation of:
 - difference between builder and runtime stages
 - runtime dependency isolation
 Guidance included verifying directly inside the running container using:
-```Bash
+`Bash
 docker exec -it goboxd sh
-python3 --version```
+python3 --version
 
 **What we used / didn't use:**
 Used container inspection and corrected runtime stage structure.
@@ -100,6 +100,102 @@ Suggested:
 
 **What we used / didn't use:**
 Implemented basic string comparison:
-```Go
-if string (output) == req.ExpectedOutput```
+`Go
+if string (output) == req.ExpectedOutput`
 and structured JSON responses.
+
+---
+
+## 2026-05-27 : Adding execution timeouts
+
+**Prompt:**
+Asked for step-by-step guidance to prevent user programs from running forever and hanging the execution service.
+
+**Response Summary:**
+Suggested using:
+`go
+context.WithTimeout(...)`
+together with:
+`Gp
+exec.CommandContext(...)`
+to automatically terminate long-running processes.
+
+**What we used / didn't use:**
+Added a 2-second timeout around program execution and tested using:
+`Python
+while True:
+	pass`
+
+---
+
+## 2026-05-28 : Separating stdout and stderr
+**Prompt:**
+Asked why runtime errors were being returned as wrong answers and how execution results should be handled.
+**Response Summary:**
+Explained that:
+`Go
+CombinedOutput()`
+merges stdout and stderr, making it difficult to distinguish normal output from output from runtime failures.
+Suggested using separate output buffers.
+
+**What we used / didn't use:**
+Replaced:
+`Go
+CombinedOutput()`
+with:
+`Go
+cmd.Stdout = &stdoutBuf
+cmd.Stderr = &stderrBuf`
+
+Runtime errors are now separated from normarl program output.
+
+---
+
+## 2026-05-28 : Runtime error classification
+**Prompt**
+Asked how execution status should be determined after separating stdout and stderr.
+
+**Response Summary:**
+Suggested prioritizing execution states:
+`time limit exceeded
+-> runtime error
+-> accepted
+-> wrong answer`
+instead of relying only on output comparison.
+
+**What we used / didn't use:**
+Added runtime error detection using:
+`Go
+if err != nil`
+and timeout detection using:
+`Go
+ctx.Err() == context.DeadlineExceeded`
+
+---
+
+## 2026-05-28 : Adding C++ execution support
+**Prompt:**
+Asked how to extend the execution service beyond Python and support compiled languages.
+**Response Summary:**
+Explained the difference between:
+`interpreter execution`
+and 
+`compile -> execute`
+pipelines.
+
+Suggested:
+`write source
+-> compile
+-> executed binary`
+for C++.
+
+**What we used / didn't use:**
+Added:
+`Go
+g++`
+to the runtime container and implemented:
+`main.cpp
+-> g++
+-> binary
+-> execution`
+including compile error handling.
