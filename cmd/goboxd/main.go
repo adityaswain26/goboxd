@@ -183,12 +183,14 @@ func readyz(w http.ResponseWriter, r *http.Request) {
 func info(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	languageIDs := make([]string, 0, len(languages))
+
+	for id := range languages {
+		languageIDs = append(languageIDs, id)
+	}
+
 	response := map[string]any{
-		"languages": []string{
-			"py3",
-			"cpp",
-			"js",
-		},
+		"languages": languageIDs,
 		"version": "0.1.0",
 	}
 
