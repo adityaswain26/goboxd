@@ -70,3 +70,14 @@ func TestReadyz(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", rr.Code)
 	}
 }
+func TestInfo(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/info", nil)
+
+	rr := httptest.NewRecorder()
+
+	info(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rr.Code)
+	}
+}

@@ -22,6 +22,7 @@ func main() {
 	http.HandleFunc("/healthz", healthz)
 	http.HandleFunc("/run",runHandler)
 	http.HandleFunc("/readyz", readyz)
+	http.HandleFunc("/info" , info)
 	fmt.Println("goboxd running on :8080")
 
 	err := http.ListenAndServe(":8080", nil)
@@ -178,4 +179,18 @@ func readyz(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status":"ready"}`))
+}
+func info(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	response := map[string]any{
+		"languages": []string{
+			"py3",
+			"cpp",
+			"js",
+		},
+		"version": "0.1.0",
+	}
+
+	json.NewEncoder(w).Encode(response)
 }
