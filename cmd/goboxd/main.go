@@ -44,23 +44,30 @@ type RunResponse struct {
 type LanguageConfig struct{
 	FileName string
 	Compiled bool
+	Command string
 }
 
 var languages = map[string]LanguageConfig{
 	"py3":{
 		FileName: "main.py",
 		Compiled: false,
+		Command: "python3",
 	},
 	"cpp":{
 		FileName: "main.cpp",
 		Compiled: true,
+	},
+	"js": {
+		FileName: "main.js",
+		Compiled: false,
+		Command: "node",
 	},
 }
 
 func buildCommand(ctx context.Context, lang LanguageConfig, sourcePath string, tempDir string) (*exec.Cmd, error) {
 
 	if !lang.Compiled {
-		return exec.CommandContext(ctx, "python3", sourcePath), nil
+		return exec.CommandContext(ctx, lang.Command, sourcePath), nil
 	}
 
 	binaryPath := filepath.Join(tempDir, "main")

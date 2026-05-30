@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	libprotobuf32 \
 	python3 \
 	g++ \
+	nodejs \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=nsjail-builder /usr/local/bin/nsjail /usr/local/bin/nsjail
 RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
@@ -40,6 +41,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libprotobuf32 \
         python3 \
 	g++ \
+	nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=nsjail-builder /usr/local/bin/nsjail /usr/local/bin/nsjail
