@@ -21,7 +21,7 @@ func healthz(w http.ResponseWriter, r *http.Request) {
 func main() {
 	http.HandleFunc("/healthz", healthz)
 	http.HandleFunc("/run",runHandler)
-
+	http.HandleFunc("/readyz", readyz)
 	fmt.Println("goboxd running on :8080")
 
 	err := http.ListenAndServe(":8080", nil)
@@ -162,4 +162,20 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	json.NewEncoder(w).Encode(response)
+}
+func readyz(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	_, pyErr := exec.LookPath("python3")
+	_, nodeErr := exec.LookPath("node")
+	_, cppErr := exec.LookPath("g++")
+
+	if pyErr != nil || nodeErr != nil || cppErr != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte(`{"status":"degraded"}`))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"ready"}`))
 }

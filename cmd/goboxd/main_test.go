@@ -59,3 +59,14 @@ func TestRunBadJSON(t *testing.T) {
 		t.Fatalf("expected status 400, got %d", rr.Code)
 	}
 }
+func TestReadyz(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+
+	rr := httptest.NewRecorder()
+
+	readyz(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rr.Code)
+	}
+}
