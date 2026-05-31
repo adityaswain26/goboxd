@@ -203,3 +203,79 @@ The `/info` endpoint now derives language information from the same configuratio
 
 * introduces a small runtime lookup step
 * response ordering depends on registry iteration unless explicitly sorted
+
+# ADR-007 · Enforce request body size limits
+
+## Status
+
+Accepted
+
+## Context
+
+The service accepted incoming request bodies without any upper bound.
+
+A client could submit an excessively large payload and force the server to allocate unnecessary memory before request validation completed.
+
+This was identified as one of the security concerns listed in the project specification.
+
+## Decision
+
+Introduce request size limiting using:
+
+```go
+http.MaxBytesReader(...)
+```
+
+before JSON decoding occurs.
+
+Requests exceeding the configured limit are rejected before processing.
+
+## Consequences
+
+### Positive
+
+* reduces memory exhaustion risk
+* prevents oversized request bodies from reaching business logic
+* aligns with specification security requirements
+
+### Negative
+
+* requires selecting and maintaining a maximum request size
+* large legitimate requests may be rejected if limits are too restrictive
+
+# ADR-008 · Bound captured child process output
+
+## Status
+
+Accepted
+
+## Context
+
+The service captured child process stdout and stderr into memory without any output limits.
+
+A malicious or poorly written program could continuously produce output and consume excessive memory.
+
+This was identified as a security risk because output growth was effectively unbounded.
+
+## Decision
+
+Introduce bounded output buffers with truncation support.
+
+Captured output is limited to a fixed maximum size. When the limit is exceeded:
+
+* additional output is discarded
+* truncation is recorded
+* a truncation marker is appended to the captured output
+
+## Consequences
+
+### Positive
+
+* prevents unbounded memory growth from child output
+* improves service stability under hostile workloads
+* aligns with specification security requirements
+
+### Negative
+
+* very large outputs are no longer fully visible
+* debugging large-output programs may require larger limits or alternative tooling

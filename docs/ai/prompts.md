@@ -342,3 +342,126 @@ Added tests for:
 
 Established an initial automated testing foundation and enabled faster verification after future refactors.
 
+---
+
+## 2026-05-31 : Evaluating Stage 1 priorities
+
+**Prompt:**
+
+Asked whether additional languages should be added or whether effort should be focused elsewhere before submission.
+
+**AI Assistance Summary:**
+
+Recommended reviewing the judging criteria and specification before expanding functionality.
+
+Highlighted that security, testing, documentation, and software engineering practices were heavily weighted alongside feature implementation.
+
+**What Was Implemented:**
+
+Shifted focus away from adding additional languages and toward security hardening.
+
+**Outcome:**
+
+Project priorities became more closely aligned with evaluation criteria and submission requirements.
+
+---
+
+## 2026-05-31 : Limiting request body size
+
+**Prompt:**
+
+Asked for the highest-value small improvement that could be completed quickly while improving the quality of the prototype.
+
+**AI Assistance Summary:**
+
+Identified unbounded request bodies as a documented security concern and recommended limiting request size before JSON decoding.
+
+**What Was Implemented:**
+
+Added request size limits using:
+
+```go id="6kixg9"
+http.MaxBytesReader(...)
+```
+
+inside the request handling flow.
+
+**Outcome:**
+
+The service now rejects excessively large request bodies before processing them.
+
+---
+
+## 2026-05-31 : Limiting captured process output
+
+**Prompt:**
+
+Asked which security issue should be addressed next after request-size limiting.
+
+**AI Assistance Summary:**
+
+Identified unbounded stdout and stderr capture as a potential memory exhaustion risk.
+
+Recommended implementing bounded output buffers with truncation support.
+
+**What Was Implemented:**
+
+Created a limited buffer implementation that:
+
+* caps captured output
+* records truncation events
+* appends truncation markers
+
+**Outcome:**
+
+The service now prevents unlimited memory growth caused by child-process output.
+
+---
+
+## 2026-05-31 : Reviewing security progress
+
+**Prompt:**
+
+Asked whether the current implementation would be competitive for advancement to the next stage.
+
+**AI Assistance Summary:**
+
+Compared implemented features against Stage 1 requirements and identified security improvements that aligned with judging criteria.
+
+Highlighted that documentation, tests, commit history, and security controls are important evaluation signals in addition to functionality.
+
+**What Was Implemented:**
+
+Reviewed implemented security controls and documented them through project logs and ADRs.
+
+**Outcome:**
+
+Developed a clearer understanding of how project evaluation extends beyond feature count.
+
+---
+
+## 2026-05-31 : Planning submission readiness
+
+**Prompt:**
+
+Asked how to spend remaining development time before preparing the final submission.
+
+**AI Assistance Summary:**
+
+Recommended focusing on:
+
+* build verification
+* documentation
+* security explanations
+* PR preparation
+
+instead of pursuing larger architectural refactors.
+
+**What Was Implemented:**
+
+Completed Day 5 documentation and prepared the project for final review and submission activities.
+
+**Outcome:**
+
+The project moved from active development toward submission readiness and review preparation.
+

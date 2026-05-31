@@ -320,3 +320,115 @@ Generated supported-language information directly from the language registry.
 
 Learned the value of maintaining a single source of truth for configuration data.
 
+---
+
+# Issues Log
+
+## 2026-05-29 · Unbounded request bodies
+
+### Problem
+
+The service accepted request bodies without any size restrictions.
+
+A client could submit extremely large payloads, causing excessive memory usage before validation or execution began.
+
+### Cause
+
+Request bodies were passed directly to the JSON decoder without any maximum size enforcement.
+
+### Investigation
+
+While reviewing the project specification, I identified request size limits as one of the documented security concerns.
+
+I reviewed the request-processing flow and confirmed that no upper bound existed.
+
+### Resolution
+
+Added request size limiting using:
+
+```go
+http.MaxBytesReader(...)
+```
+
+before JSON decoding.
+
+### Learning
+
+Learned that input validation includes not only checking content correctness but also controlling resource consumption.
+
+---
+
+## 2026-05-31 : Unbounded child process output
+
+### Problem
+
+The service captured stdout and stderr into memory without any output limits.
+
+Programs that continuously printed output could consume excessive memory and potentially destabilize the service.
+
+### Cause
+
+Output was collected using in-memory buffers with no maximum capacity.
+
+### Investigation
+
+After reviewing the specification's security section, I examined how process output was captured and noticed that output growth was unrestricted.
+
+### Resolution
+
+Implemented bounded output buffers with truncation support.
+
+Output is now capped at a fixed size and marked as truncated when limits are exceeded.
+
+### Learning
+
+Learned that resource limits must apply not only to execution time but also to program output.
+
+---
+
+## 2026-05-31 : Prioritization mismatch between features and evaluation criteria
+
+### Problem
+
+My initial instinct for Day 5 was to continue adding more functionality and languages.
+
+### Cause
+
+I was focusing primarily on visible features rather than reviewing the evaluation criteria and judging priorities.
+
+### Investigation
+
+After rereading the specification, I noticed that security, documentation, testing, and software engineering practices are heavily weighted alongside functionality.
+
+### Resolution
+
+Shifted focus from feature expansion to security hardening and project completeness.
+
+### Learning
+
+Learned that successful project delivery depends on aligning implementation work with evaluation criteria rather than continuously adding features.
+
+---
+
+## 2026-05-31 : Security fixes needed to be documented, not only implemented
+
+### Problem
+
+Several security improvements had already been introduced throughout the project, but they were not being tracked in a structured way.
+
+### Cause
+
+The focus was initially on making the system work rather than documenting why certain design choices were made.
+
+### Investigation
+
+While preparing for submission requirements, I reviewed the list of security issues and compared them against existing implementation decisions.
+
+### Resolution
+
+Started documenting security-related decisions, fixes, and architectural changes through ADRs and project logs.
+
+### Learning
+
+Learned that maintainability includes explaining security decisions so reviewers and future contributors can understand them quickly.
+

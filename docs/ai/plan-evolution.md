@@ -267,3 +267,108 @@ repeatable automated verification
 
 and highlighted the importance of validating behavior after refactoring.
 
+---
+
+# 2026-05-31 : Moving from functionality to security hardening
+
+At the beginning of Day 5, the execution service already supported:
+
+* Python
+* JavaScript
+* C++
+
+along with compilation, execution, timeout handling, and operational endpoints.
+
+The focus shifted away from adding new functionality and toward addressing security concerns identified in the project specification.
+
+---
+
+# Understanding security as part of functionality
+
+Earlier in the project, I primarily viewed success as:
+
+```text
+request
+    ↓
+execution
+    ↓
+result
+```
+
+Today I started thinking about how the service behaves under misuse or adversarial inputs.
+
+The goal expanded from:
+
+```text
+make execution work
+```
+
+to:
+
+```text
+make execution work safely
+```
+
+---
+
+# Limiting request size
+
+Initially, request bodies were processed without any size restrictions.
+
+I realized that a client could submit extremely large payloads and force the service to allocate unnecessary memory before execution even began.
+
+To address this, I introduced request size limits using:
+
+```go
+http.MaxBytesReader(...)
+```
+
+This was my first explicit mitigation against resource exhaustion attacks.
+
+---
+
+# Limiting captured process output
+
+I then examined how program output was handled.
+
+The service captured stdout and stderr into memory using buffers without any upper bound.
+
+A malicious or poorly written program could continuously print data and cause excessive memory consumption.
+
+To address this, I implemented bounded output buffers with truncation support.
+
+The execution service now limits captured output and appends a truncation marker when limits are exceeded.
+
+---
+
+# Reading the specification differently
+
+Earlier in the project, I mainly focused on endpoint behavior and language execution.
+
+After revisiting the specification, I noticed that many judging criteria focus on:
+
+* security
+* maintainability
+* software engineering practices
+* documentation
+
+rather than simply adding more languages.
+
+This changed my priorities for the final phase of Stage 1.
+
+---
+
+# Prototype vs production thinking
+
+One of the biggest shifts today was understanding that a prototype is not only judged by features.
+
+The project now includes:
+
+* tests
+* documentation
+* commit history
+* architecture notes
+* security controls
+
+which are all part of demonstrating engineering maturity rather than feature count alone.
+
