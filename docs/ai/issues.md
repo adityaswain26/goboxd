@@ -186,3 +186,137 @@ g++`
 inside the runtime container.
 ## Learning 
 Learned that execution systems require language-specific exection strategie rather than one universal execution path.
+---
+## 2026-05-29 : Language metadata duplicated across the codebase
+
+### Problem
+
+Language-specific information was spread across multiple sections of the code.
+
+Adding a new language required updating several different conditional blocks.
+
+### Cause
+
+Language metadata such as filenames and execution behavior was embedded directly inside request-processing logic.
+
+### Investigation
+
+While preparing to add JavaScript support, I reviewed the code path for language handling and noticed that language-specific logic existed in multiple places.
+
+### Resolution
+
+Introduced a central language registry:
+
+```go
+var languages = map[string]LanguageConfig
+```
+
+and moved language metadata into a single location.
+
+### Learning
+
+Learned that configuration duplication creates maintenance overhead and makes language additions more error-prone.
+
+---
+
+## 2026-05-29 : Request handler accumulating too many responsibilities
+
+### Problem
+
+The request handler was responsible for:
+
+* request parsing
+* source file preparation
+* language selection
+* compilation
+* execution
+* response generation
+
+This made the function increasingly difficult to extend.
+
+### Cause
+
+Execution behavior was implemented directly inside the HTTP handling layer.
+
+### Investigation
+
+While adding JavaScript support, the execution logic became more complex and highlighted the growing responsibility of the request handler.
+
+### Resolution
+
+Extracted execution-command creation into:
+
+```go
+buildCommand(...)
+```
+
+and delegated language-specific execution setup to this function.
+
+### Learning
+
+Learned that separating HTTP concerns from execution concerns improves readability and maintainability.
+
+---
+
+## 2026-05-29 : Compile failure caused by malformed struct literal
+
+### Problem
+
+The project failed to build with errors such as:
+
+```text
+unexpected newline in composite literal
+```
+
+and:
+
+```text
+syntax error: unexpected ) at end of statement
+```
+
+### Cause
+
+While implementing compile-error handling, the response struct contained:
+
+* a missing comma
+* a misspelled field name (`Stder`)
+* incorrect brace placement
+
+### Investigation
+
+Inspected the compiler output and reviewed the reported source lines.
+
+### Resolution
+
+Corrected the struct literal syntax and matched the response field names with the RunResponse definition.
+
+### Learning
+
+Learned that Go compiler line references are usually very precise and should be inspected before making broader changes.
+
+---
+
+## 2026-05-30 : Service metadata could become inconsistent with supported languages
+
+### Problem
+
+The `/info` endpoint initially contained a manually maintained list of supported languages.
+
+Future language additions could update the registry without updating the endpoint.
+
+### Cause
+
+The supported-language list was duplicated instead of being derived from the execution configuration.
+
+### Investigation
+
+While reviewing the info endpoint, I noticed that language information existed both in the registry and inside the endpoint implementation.
+
+### Resolution
+
+Generated supported-language information directly from the language registry.
+
+### Learning
+
+Learned the value of maintaining a single source of truth for configuration data.
+

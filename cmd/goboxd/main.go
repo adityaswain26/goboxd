@@ -86,6 +86,7 @@ func buildCommand(ctx context.Context, lang LanguageConfig, sourcePath string, t
 func runHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type","application/json")
 	var req RunRequest
+	r.Body = http.MaxBytesReader(w, r.Body, 256*1024)
 
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {

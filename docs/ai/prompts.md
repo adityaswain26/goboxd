@@ -199,3 +199,146 @@ to the runtime container and implemented:
 -> binary
 -> execution`
 including compile error handling.
+
+---
+
+## 2026-05-29 : Refactoring language handling into a registry
+
+**Prompt:**
+
+Asked how to improve the growing number of language-specific conditional branches and make the execution service easier to extend.
+
+**Response Summary:**
+Suggested introducing a central language registry containing language metadata such as:
+
+* source filename
+* execution model
+* runtime command
+
+and using the registry as the primary source of language configuration.
+
+**What Was Implemented:**
+
+Created:
+
+```go
+type LanguageConfig struct
+```
+
+and:
+
+```go
+var languages = map[string]LanguageConfig
+```
+
+to centralize language metadata.
+
+**Outcome:**
+
+Language configuration now exists in a single location and serves as the foundation for future language additions.
+
+---
+
+## 2026-05-29 : Separating execution construction from HTTP handling
+
+**Prompt:**
+
+Asked how to reduce the amount of language-specific execution logic inside the request handler.
+
+**Response Summary:**
+
+Recommended extracting execution-command creation into a dedicated function and allowing the request handler to focus on request processing responsibilities.
+
+**What Was Implemented:**
+
+Introduced:
+
+```go
+buildCommand(...)
+```
+
+to handle language-specific command preparation.
+
+**Outcome:**
+
+The request handler became simpler and execution logic became easier to maintain.
+
+---
+
+## 2026-05-30 : Validating extensibility through JavaScript support
+
+**Prompt:**
+
+Asked how to verify whether the registry-based design actually improved extensibility.
+
+**Response Summary:**
+
+Suggested adding a third language and observing how many code locations required modification.
+
+**What Was Implemented:**
+
+Added JavaScript support by:
+
+* installing Node.js
+* registering a new language entry
+* using a configurable interpreter command
+
+**Outcome:**
+
+JavaScript support was added with minimal changes to existing execution logic, validating the registry-based approach.
+
+---
+
+## 2026-05-30 : Implementing readiness and information endpoints
+
+**Prompt:**
+
+Asked for a small but meaningful feature that aligned with the project specification and could be completed quickly.
+
+**Response Summary:**
+
+Recommended implementing:
+
+* `/readyz`
+* `/info`
+
+and using them to expose runtime availability and service metadata.
+
+**What Was Implemented:**
+
+Added both endpoints and later updated `/info` to derive supported languages from the language registry.
+
+**Outcome:**
+
+The service now exposes operational metadata and health information in addition to code execution functionality.
+
+---
+
+## 2026-05-30 : Introducing initial unit tests
+
+**Prompt:**
+
+Asked which project requirement should be prioritized after completing execution features and architectural refactoring.
+
+**Response Summary:**
+
+Highlighted unit testing as a Stage 1 requirement and suggested beginning with lightweight handler tests using:
+
+```go
+httptest
+```
+
+**What Was Implemented:**
+
+Added tests for:
+
+* health endpoint
+* readiness endpoint
+* info endpoint
+* invalid JSON handling
+* unsupported languages
+
+**Outcome:**
+
+Established an initial automated testing foundation and enabled faster verification after future refactors.
+

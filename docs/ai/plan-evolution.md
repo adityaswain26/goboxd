@@ -155,3 +155,115 @@ C++ execution:
 `source -> compiler -> binary -> execution -> output`
 This is changed how I think about the backend architecture. I no longer see the system as a Python runner, but as a multi-language execution system where each language may require its own execution pipeline.
  
+---
+
+## 2026-05-28 : Moving toward extensibility
+
+At the beginning of Day 4, the execution service supported multiple languages, but language-specific behavior was still partially embedded inside the request handling flow.
+
+The main goal of today was not adding many new features, but improving the architecture so the system could grow more easily.
+
+---
+
+### Language registry
+
+Initially, language behavior was determined through multiple conditional branches spread throughout the code.
+
+As support for additional languages increased, it became clear that language metadata should live in a central registry rather than inside request handling logic.
+
+A language registry was introduced to store:
+
+* source filenames
+* execution model information
+* interpreter commands
+
+This shifted the architecture from:
+
+```text
+request handler
+    ↓
+language-specific logic
+```
+
+to:
+
+```text
+language registry
+    ↓
+execution logic
+```
+
+---
+
+### Execution abstraction
+
+Language execution logic was extracted into a dedicated function:
+
+```text
+buildCommand()
+```
+
+This separated:
+
+* HTTP concerns
+* execution concerns
+
+and reduced the amount of language-specific logic inside the request handler.
+
+---
+
+### Validating extensibility
+
+To verify that the refactor actually improved extensibility, JavaScript support was added.
+
+Adding JavaScript required:
+
+* installing Node.js
+* adding a registry entry
+* using a configurable interpreter command
+
+No large request-handler changes were necessary.
+
+This demonstrated that the registry approach scales better than hardcoded language branches.
+
+---
+
+### Operational endpoints
+
+Two operational endpoints were added:
+
+* /readyz
+* /info
+
+This introduced the idea that the service should expose information about its health and capabilities, not just execute code.
+
+The info endpoint was later updated to derive supported languages directly from the registry rather than maintaining a separate hardcoded list.
+
+---
+
+### Testing
+
+Today was also the first day focused on testing.
+
+Unit tests were added for:
+
+* health endpoint
+* readiness endpoint
+* info endpoint
+* invalid JSON requests
+* unsupported languages
+
+This changed my perspective from:
+
+```text
+manual verification
+```
+
+to:
+
+```text
+repeatable automated verification
+```
+
+and highlighted the importance of validating behavior after refactoring.
+
