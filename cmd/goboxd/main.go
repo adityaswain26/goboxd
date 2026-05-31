@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,6 +12,8 @@ import (
 	"path/filepath"
 	"time"
 )
+
+const MaxOutputBytes = 64 * 1024
 
 func healthz(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -83,6 +86,27 @@ func buildCommand(ctx context.Context, lang LanguageConfig, sourcePath string, t
 	return exec.CommandContext(ctx, binaryPath), nil
 }
 
+type LimitedBuffer struct {
+	bytes.Buffer
+	Truncated bool
+}
+
+func (b *LimitedBuffer) Write(p []byte) (int, error) {
+	if b.Len() >= MaxOutputBytes {
+		b.Truncated = true
+		return len(p), nil
+	}
+
+	remaining := MaxOutputBytes - b.Len()
+
+	if len(p) > remaining {
+		b.Truncated = true
+		p = p[:remaining]
+	}
+
+	return b.Buffer.Write(p)
+}
+
 func runHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type","application/json")
 	var req RunRequest
@@ -128,13 +152,20 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(response)
 		return
 	}
-	var stdoutBuf bytes.Buffer
-	var stderrBuf bytes.Buffer
+	var stdoutBuf LimitedBuffer
+	var stderrBuf LimitedBuffer
 
-	cmd.Stdout = &stdoutBuf
-	cmd.Stderr = &stderrBuf
+	cmd.Stdout = io.MultiWriter(&stdoutBuf)
+	cmd.Stderr = io.MultiWriter(&stderrBuf)
 
 	err = cmd.Run()
+	if stdoutBuf.Truncated {
+		stdoutBuf.Write([]byte("\n[output truncated]\n"))
+	}
+
+	if stderrBuf.Truncated {
+		stderrBuf.Write([]byte("\n[output truncated]\n"))
+	}
 
 	fmt.Println("Execution output:")
 	fmt.Println(stdoutBuf.String())
